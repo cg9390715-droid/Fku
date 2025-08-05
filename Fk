@@ -1,0 +1,239 @@
+-- Services that your UI will likely need.
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Load the core spawner library from the source.
+local Spawner
+local success, result = pcall(function()
+	if not workspace:FindFirstChild("PetsPhysical") then
+		Instance.new("Folder", workspace).Name = "PetsPhysical"
+	end
+	Spawner = loadstring(game:HttpGet("https://codeberg.org/GrowAFilipino/GrowAGarden/raw/branch/main/Spawner.lua", true))()
+end)
+
+-- If the library fails to load, stop the script.
+if not success or not Spawner then
+	warn("Spawner Library could not be loaded. Details: " .. tostring(result))
+	return
+end
+
+-- A helper function to safely get data tables from the library.
+local function GetSafeData(fetchFunction)
+	local data = {}
+	local success, result = pcall(fetchFunction)
+	if success and type(result) == "table" then
+		data = result
+		table.sort(data)
+	end
+	return data
+end
+
+-- Fetch the item names. You will use these tables to populate your UI lists.
+local pet_names = GetSafeData(function() return Spawner:GetPets() end)
+local seed_names = GetSafeData(function() return Spawner:GetSeeds() end)
+local egg_names = GetSafeData(function() return Spawner:GetEggs() end)
+
+-- This is where you will write the code for your custom UI.
+local function BuildYourInterface()
+	
+	-- Theme Colors & Fonts
+	local theme = {
+		KiwiSkin = Color3.fromRGB(87, 66, 33), -- Dark brown
+		KiwiFlesh = Color3.fromRGB(196, 191, 149), -- Light brownish-green
+		KiwiHighlight = Color3.fromRGB(132, 185, 23), -- Vibrant green
+		KiwiText = Color3.fromRGB(255, 255, 255),
+		KiwiTextDark = Color3.fromRGB(20, 20, 20),
+		Font = Enum.Font.SourceSans
+	}
+
+	-- State variables
+	local selectedPet = nil
+	local selectedSeed = nil
+	local selectedEgg = nil
+	
+	-- 1. Create your ScreenGui and frames here.
+	local screenGui = Instance.new("ScreenGui")
+	screenGui.Name = "KiwiSpawnerUI"
+	screenGui.ResetOnSpawn = false
+	screenGui.Parent = PlayerGui
+
+	local mainFrame = Instance.new("Frame")
+	mainFrame.Name = "MainFrame"
+	mainFrame.Size = UDim2.new(0, 500, 0, 350)
+	mainFrame.Position = UDim2.new(0.5, -250, 0.5, -175)
+	mainFrame.BackgroundColor3 = theme.KiwiSkin
+	mainFrame.BorderColor3 = theme.KiwiFlesh
+	mainFrame.BorderSizePixel = 2
+	mainFrame.Active = true
+	mainFrame.Draggable = true
+	mainFrame.Parent = screenGui
+
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 12)
+	corner.Parent = mainFrame
+
+	local header = Instance.new("TextLabel")
+	header.Name = "Header"
+	header.Size = UDim2.new(1, 0, 0, 30)
+	header.BackgroundColor3 = theme.KiwiFlesh
+	header.TextColor3 = theme.KiwiTextDark
+	header.Text = "Kiwi Spawner"
+	header.Font = theme.Font
+	header.TextSize = 18
+	header.Parent = mainFrame
+	
+	local headerCorner = Instance.new("UICorner")
+	headerCorner.CornerRadius = UDim.new(0, 12)
+	headerCorner.Parent = header
+	
+	local tabContainer = Instance.new("Frame")
+	tabContainer.Name = "TabContainer"
+	tabContainer.Size = UDim2.new(0, 100, 1, -30)
+	tabContainer.Position = UDim2.new(0, 0, 0, 30)
+	tabContainer.BackgroundTransparency = 1
+	tabContainer.Parent = mainFrame
+
+	local contentContainer = Instance.new("Frame")
+	contentContainer.Name = "ContentContainer"
+	contentContainer.Size = UDim2.new(1, -105, 1, -35)
+	contentContainer.Position = UDim2.new(0, 105, 0, 30)
+	contentContainer.BackgroundTransparency = 1
+	contentContainer.Parent = mainFrame
+
+	-- Tab Frames
+	local petsFrame = Instance.new("Frame")
+	petsFrame.Name = "PetsFrame"
+	petsFrame.Size = UDim2.new(1, 0, 1, 0)
+	petsFrame.BackgroundTransparency = 1
+	petsFrame.Visible = true
+	petsFrame.Parent = contentContainer
+
+	local seedsFrame = Instance.new("Frame")
+	seedsFrame.Name = "SeedsFrame"
+	seedsFrame.Size = UDim2.new(1, 0, 1, 0)
+	seedsFrame.BackgroundTransparency = 1
+	seedsFrame.Visible = false
+	seedsFrame.Parent = contentContainer
+
+	local eggsFrame = Instance.new("Frame")
+	eggsFrame.Name = "EggsFrame"
+	eggsFrame.Size = UDim2.new(1, 0, 1, 0)
+	eggsFrame.BackgroundTransparency = 1
+	eggsFrame.Visible = false
+	eggsFrame.Parent = contentContainer
+	
+	local utilsFrame = Instance.new("Frame")
+	utilsFrame.Name = "UtilsFrame"
+	utilsFrame.Size = UDim2.new(1, 0, 1, 0)
+	utilsFrame.BackgroundTransparency = 1
+	utilsFrame.Visible = false
+	utilsFrame.Parent = contentContainer
+
+	-- Tab Creation Logic
+	local tabs = {}
+	local function createTab(name, contentFrame)
+		local tabButton = Instance.new("TextButton")
+		tabButton.Name = name .. "Tab"
+		tabButton.Size = UDim2.new(1, -10, 0, 30)
+		tabButton.Position = UDim2.new(0, 5, 0, 5 + (#tabs * 35))
+		tabButton.BackgroundColor3 = theme.KiwiFlesh
+		tabButton.TextColor3 = theme.KiwiTextDark
+		tabButton.Text = name
+		tabButton.Font = theme.Font
+		tabButton.TextSize = 16
+		tabButton.Parent = tabContainer
+		
+		local tabCorner = Instance.new("UICorner")
+		tabCorner.CornerRadius = UDim.new(0, 8)
+		tabCorner.Parent = tabButton
+		
+		table.insert(tabs, {button = tabButton, frame = contentFrame})
+
+		tabButton.MouseButton1Click:Connect(function()
+			for i, t in ipairs(tabs) do
+				t.frame.Visible = (t.frame == contentFrame)
+				t.button.BackgroundColor3 = (t.frame == contentFrame) and theme.KiwiHighlight or theme.KiwiFlesh
+			end
+		end)
+	end
+	
+	createTab("Pets", petsFrame)
+	createTab("Seeds", seedsFrame)
+	createTab("Eggs", eggsFrame)
+	createTab("Utilities", utilsFrame)
+
+	-- Set initial active tab
+	tabs[1].button.BackgroundColor3 = theme.KiwiHighlight
+	
+	-- Helper to create list items
+	local function populateList(scrollFrame, names, selectionVarUpdater)
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.Padding = UDim.new(0, 5)
+		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		listLayout.Parent = scrollFrame
+
+		for _, name in ipairs(names) do
+			local itemButton = Instance.new("TextButton")
+			itemButton.Name = name
+			itemButton.Size = UDim2.new(1, -10, 0, 25)
+			itemButton.BackgroundColor3 = theme.KiwiFlesh
+			itemButton.TextColor3 = theme.KiwiTextDark
+			itemButton.Text = name
+			itemButton.Font = theme.Font
+			itemButton.TextSize = 14
+			itemButton.Parent = scrollFrame
+			
+			local itemCorner = Instance.new("UICorner")
+			itemCorner.CornerRadius = UDim.new(0, 6)
+			itemCorner.Parent = itemButton
+
+			itemButton.MouseButton1Click:Connect(function()
+				selectionVarUpdater(name, itemButton)
+			end)
+		end
+	end
+
+	-- Helper to create input fields
+	local function createInputField(parent, text, position)
+		local container = Instance.new("Frame")
+		container.Size = UDim2.new(0, 120, 0, 25)
+		container.Position = position
+		container.BackgroundTransparency = 1
+		container.Parent = parent
+		
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(0.4, 0, 1, 0)
+		label.BackgroundTransparency = 1
+		label.Text = text .. ":"
+		label.Font = theme.Font
+		label.TextColor3 = theme.KiwiText
+		label.TextSize = 14
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Parent = container
+
+		local textbox = Instance.new("TextBox")
+		textbox.Name = text .. "Input"
+		textbox.Size = UDim2.new(0.6, 0, 1, 0)
+		textbox.Position = UDim2.new(0.4, 0, 0, 0)
+		textbox.BackgroundColor3 = theme.KiwiFlesh
+		textbox.TextColor3 = theme.KiwiTextDark
+		textbox.Font = theme.Font
+		textbox.TextSize = 14
+		textbox.Text = "1"
+		textbox.ClearTextOnFocus = false
+		textbox.Parent = container
+		
+		local textCorner = Instance.new("UICorner")
+		textCorner.CornerRadius = UDim.new(0, 6)
+		textCorner.Parent = textbox
+
+		return textbox
+	end
+
+	-- ### PETS TAB ###
+	local petScroll = Instance.new("ScrollingFrame")
+	petScroll.Size = UDim2.new(1, 0, 0, 200)
+	petScroll.BackgroundColor3 = theme.KiwiSkin
+	petScroll.BorderSizePixel = 0
