@@ -1,0 +1,34 @@
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+local Window = Library.CreateLib("RAMDOM SCRIPT", "DarkTheme")
+local Tab = Window:NewTab("GOD MODE")
+local Section = Tab:NewSection("lol")
+Section:NewButton("focus", "speed", function()
+    -- LocalScript to set walkspeed to 50
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+-- Set the walkspeed to 50
+humanoid.WalkSpeed = 50
+
+end)
+Section:NewButton("ButtonText", "tp to base", function()
+-- LocalScript inside the TextButton
+local button = script.Parent
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+
+-- Coordinates of the base (replace this with your base's actual position)
+local basePosition = Vector3.new(0, 10, 0)  -- Example base position
+
+-- Function to teleport player to the base
+local function teleportToBase()
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        -- Teleport the player to the base position
+        character.HumanoidRootPart.CFrame = CFrame.new(basePosition)
+    end
+end
+
+-- Connect the button click to the teleport function
+button.MouseButton1Click:Connect(teleportToBase)
+end)
